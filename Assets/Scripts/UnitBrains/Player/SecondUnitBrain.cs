@@ -1,6 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
+using Model;
 using Model.Runtime.Projectiles;
 using UnityEngine;
+using Utilities;
 
 namespace UnitBrains.Player
 {
@@ -31,10 +34,18 @@ namespace UnitBrains.Player
             IncreaseTemperature();
             ///////////////////////////////////////
         }
-
+        
+        public List<Vector2Int> unreachableTargets = new();
         public override Vector2Int GetNextStep()
         {
-            return base.GetNextStep();
+            if (unreachableTargets.Count > 0)
+            {
+                return unit.Pos.CalcNextStepTowards(unreachableTargets[0]);
+            }
+            else
+            {
+                return unit.Pos;
+            }
         }
 
         protected override List<Vector2Int> SelectTargets()
@@ -42,25 +53,38 @@ namespace UnitBrains.Player
             ///////////////////////////////////////
             // Homework 1.4 (1st block, 4rd module)
             ///////////////////////////////////////
-            List<Vector2Int> result = GetReachableTargets();
+            List<Vector2Int> allTargets = GetAllTargets().ToList();
+            List<Vector2Int> result = new();
             
-            if (result.Count > 0)
+            if (allTargets.Count > 0)
             {
                 float minDistance = float.MaxValue;
                 Vector2Int target = Vector2Int.zero;
                 
-                foreach (var res in result)
+                foreach (var tar in allTargets)
                 {
-                    if (DistanceToOwnBase(res) < minDistance)
+                    if (DistanceToOwnBase(tar) < minDistance)
                     {
-                        minDistance = DistanceToOwnBase(res);
-                        target = res;
+                        minDistance = DistanceToOwnBase(tar);
+                        target = tar;
                     }
                 }
                 
-                result.Clear();
-                result.Add(target);
-            } 
+                if (IsTargetInRange(target))
+                {
+                    result.Add(target);
+                }
+                else
+                {
+                    unreachableTargets.Clear();
+                    unreachableTargets.Add(target);
+                }
+            }
+            else
+            {
+                int enemyBase = IsPlayerUnitBrain ? RuntimeModel.BotPlayerId : RuntimeModel.PlayerId;
+                result.Add(runtimeModel.RoMap.Bases[enemyBase]);
+            }
             return result;
             ///////////////////////////////////////
         }
